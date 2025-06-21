@@ -1,9 +1,10 @@
 mod cli_client;
 mod io;
 mod offline_tools;
-mod tool;
+mod types;
 
 use offline_tools::offline_toolset;
+pub use types::{Tool, ToolSet};
 
 use anyhow::Result;
 #[tokio::main]

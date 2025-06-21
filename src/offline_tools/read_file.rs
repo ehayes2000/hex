@@ -1,4 +1,4 @@
-use crate::tool::Tool;
+use crate::Tool;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::fs::read_to_string;
@@ -20,9 +20,5 @@ impl Tool for ReadFiles {
             })
             .collect::<Vec<_>>()
             .join("\n")
-    }
-
-    fn name(&self) -> &'static str {
-        "read_file"
     }
 }

@@ -1,7 +1,8 @@
+use super::ToolSet;
 use super::io::{read_user_input, stdout_stream};
-use super::tool::ToolSet;
 
 use anyhow::{Context, Result};
+use async_openai::Client;
 use async_openai::config::OpenAIConfig;
 use async_openai::types::{
     ChatCompletionMessageToolCall, ChatCompletionRequestAssistantMessage,
@@ -10,7 +11,6 @@ use async_openai::types::{
     ChatCompletionRequestUserMessageContent, ChatCompletionResponseStream,
     CreateChatCompletionRequestArgs, FinishReason, FunctionCall,
 };
-use async_openai::Client;
 use async_stream::stream;
 use futures::stream::{Stream, StreamExt};
 use std::collections::HashMap;
@@ -73,13 +73,14 @@ impl CliClient {
             new_messages.iter().for_each(|message| {
                 if let ChatCompletionRequestMessage::Assistant(message) = message {
                     for call in message.tool_calls.as_deref().unwrap_or_default() {
-                        eprintln!("[{}({})]", call.function.name, call.function.arguments);
+                        println!("[{}({})]", call.function.name, call.function.arguments);
                     }
                 }
             });
             self.messages.append(&mut new_messages);
             Box::pin(self.chat_response()).await
         } else {
+            println!();
             self.messages.append(&mut new_messages);
             Ok(())
         }

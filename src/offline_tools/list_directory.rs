@@ -1,4 +1,4 @@
-use crate::tool::Tool;
+use crate::Tool;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -24,8 +24,5 @@ impl Tool for ListDirectory {
             })
             .collect::<Vec<_>>()
             .join("\n")
-    }
-    fn name(&self) -> &'static str {
-        "list_directory"
     }
 }

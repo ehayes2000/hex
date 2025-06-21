@@ -5,7 +5,7 @@ use futures::stream::{Stream, StreamExt};
 use rand::prelude::*;
 use std::pin::Pin;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 const PROMPT: &str = ">>> ";
 
@@ -37,7 +37,6 @@ pub async fn stdout_stream(
         }
         output.flush().await?;
     }
-    output.write_all("\n".as_bytes()).await?;
     Ok(parts)
 }
 
