@@ -3,9 +3,17 @@ pub trait Tool {
     fn apply(&self, context: Self::Context) -> String;
 }
 
-pub struct NoContext();
+#[async_trait::async_trait]
+pub trait AsyncTool {
+    type Context;
+    async fn apply(&self, context: Self::Context) -> ToolCallResponse;
+}
 
-// #[async_trait::async_trait]
-// pub trait AsyncTool {
-//     async fn apply(&self) -> String;
-// }
+pub enum ToolCallResponse {
+    OkNone,
+    OkContext(String),
+    FailNone,
+    Fail(String),
+}
+
+pub struct NoContext();
