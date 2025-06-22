@@ -1,3 +1,4 @@
+mod create_file;
 mod edit_file;
 mod list_directory;
 mod read_file;
@@ -5,6 +6,7 @@ mod read_file;
 use super::ToolSet;
 use crate::types::NoContext;
 
+use create_file::CreateFile;
 use edit_file::EditFile;
 use list_directory::ListDirectory;
 use read_file::ReadFiles;
@@ -17,4 +19,6 @@ pub fn offline_toolset() -> ToolSet<NoContext> {
         .expect("read file")
         .add_tool::<EditFile>()
         .expect("edit file")
+        .add_tool::<CreateFile>()
+        .expect("create file")
 }

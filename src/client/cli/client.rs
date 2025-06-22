@@ -1,7 +1,7 @@
 use super::io::{read_user_input, stdout_stream};
 
-use crate::ToolSet;
 use crate::types::NoContext;
+use crate::types::ToolSet;
 
 use anyhow::{Context, Result};
 use async_openai::Client;

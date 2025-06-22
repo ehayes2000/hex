@@ -1,4 +1,4 @@
-use super::cli_client::StreamItem;
+use super::client::StreamItem;
 use anyhow::Result;
 use async_stream::stream;
 use futures::stream::{Stream, StreamExt};

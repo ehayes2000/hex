@@ -1,30 +1,14 @@
-use super::Tool;
-use super::tool_object::{ToolObject, ValidationError};
+use super::tool_object::ToolObject;
+use super::types::*;
+use crate::types::Tool;
 use async_openai::types::ChatCompletionTool;
 use schemars::JsonSchema;
 use serde::de::Deserialize;
 use std::collections::hash_map::HashMap;
-use thiserror::Error;
 
 #[derive(Default)]
 pub struct ToolSet<T> {
     tools: HashMap<String, ToolObject<T>>,
-}
-
-#[derive(Debug, Error)]
-pub enum ToolSetCreationError {
-    #[error("error validating schema")]
-    Validation(ValidationError),
-    #[error("two or more tools have the same name")]
-    NameConflict(String),
-}
-
-#[derive(Debug, Error)]
-pub enum ToolCallError {
-    #[error("error deserializing tool call (possible hallucination)")]
-    Deserialization(serde_json::Error),
-    #[error("tool not in toolset")]
-    NotFound(String),
 }
 
 impl<C> ToolSet<C> {

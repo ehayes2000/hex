@@ -2,7 +2,7 @@ mod client;
 mod offline_tools;
 mod types;
 
-use client::cli_client::CliClient;
+use client::cli::CliClient;
 use offline_tools::offline_toolset;
 use types::{Tool, ToolSet};
 

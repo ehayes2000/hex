@@ -1,3 +1,2 @@
-pub mod cli_client;
-mod io;
-pub mod web_client;
+pub mod cli;
+pub mod web;

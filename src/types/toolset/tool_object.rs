@@ -1,4 +1,4 @@
-use super::Tool;
+use crate::types::Tool;
 use async_openai::types::{ChatCompletionTool, ChatCompletionToolType, FunctionObject};
 use schemars::JsonSchema;
 use schemars::schema::{RootSchema, Schema, SchemaObject};
