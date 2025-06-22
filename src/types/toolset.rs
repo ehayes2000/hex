@@ -7,8 +7,8 @@ use std::collections::hash_map::HashMap;
 use thiserror::Error;
 
 #[derive(Default)]
-pub struct ToolSet {
-    tools: HashMap<String, ToolObject>,
+pub struct ToolSet<T> {
+    tools: HashMap<String, ToolObject<T>>,
 }
 
 #[derive(Debug, Error)]
@@ -27,7 +27,7 @@ pub enum ToolCallError {
     NotFound(String),
 }
 
-impl ToolSet {
+impl<C> ToolSet<C> {
     pub fn new() -> Self {
         Self {
             tools: HashMap::new(),
@@ -36,7 +36,7 @@ impl ToolSet {
 
     pub fn add_tool<T>(mut self) -> Result<Self, ToolSetCreationError>
     where
-        T: JsonSchema + Tool + for<'de> Deserialize<'de> + 'static,
+        T: JsonSchema + Tool<Context = C> + for<'de> Deserialize<'de> + 'static,
     {
         let tool_object =
             ToolObject::try_from_tool::<T>().map_err(ToolSetCreationError::Validation)?;
@@ -48,7 +48,12 @@ impl ToolSet {
         }
     }
 
-    pub fn try_tool_call(&self, tool_name: &str, json: &str) -> Result<String, ToolCallError> {
+    pub fn try_tool_call(
+        &self,
+        context: C,
+        tool_name: &str,
+        json: &str,
+    ) -> Result<String, ToolCallError> {
         let tool = self
             .tools
             .get(tool_name)
@@ -57,11 +62,11 @@ impl ToolSet {
                 tool.try_deserialize(json)
                     .map_err(ToolCallError::Deserialization)
             })?;
-        Ok(tool.apply())
+        Ok(tool.apply(context))
     }
 }
 
-impl ToolSet {
+impl<T> ToolSet<T> {
     pub fn openai_chatcompletion_toolset(&self) -> Vec<ChatCompletionTool> {
         self.tools.values().map(ChatCompletionTool::from).collect()
     }

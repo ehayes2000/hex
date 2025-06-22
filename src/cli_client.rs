@@ -1,5 +1,6 @@
 use super::ToolSet;
 use super::io::{read_user_input, stdout_stream};
+use super::types::NoContext;
 
 use anyhow::{Context, Result};
 use async_openai::Client;
@@ -18,7 +19,7 @@ use std::pin::Pin;
 
 pub struct CliClient {
     inner: Client<OpenAIConfig>,
-    toolset: ToolSet,
+    toolset: ToolSet<NoContext>,
     messages: Vec<ChatCompletionRequestMessage>,
 }
 
@@ -36,9 +37,9 @@ pub enum StreamItem {
 }
 
 impl CliClient {
-    pub fn new(toolset: ToolSet) -> Self {
+    pub fn new(toolset: ToolSet<NoContext>) -> CliClient {
         let client = Client::new();
-        Self {
+        CliClient {
             inner: client,
             toolset,
             messages: vec![],
@@ -60,7 +61,9 @@ impl CliClient {
             self.chat_response().await?;
         }
     }
+}
 
+impl CliClient {
     async fn chat_response(&mut self) -> Result<()> {
         let stream = self.send_chat_message().await.context("bad request")?;
         let stream = Self::parse_stream(stream);
@@ -85,9 +88,6 @@ impl CliClient {
             Ok(())
         }
     }
-}
-
-impl CliClient {
     async fn send_chat_message(&mut self) -> Result<ChatCompletionResponseStream> {
         let request = CreateChatCompletionRequestArgs::default()
             .model("gpt-4.1")
@@ -174,7 +174,7 @@ impl CliClient {
                 StreamItem::ToolCall(call) => {
                     if let Ok(context) = self
                         .toolset
-                        .try_tool_call(&call.name, &call.json)
+                        .try_tool_call(NoContext(), &call.name, &call.json)
                         .inspect_err(|err| eprintln!("error: {:?}", err))
                     {
                         tool_calls.push(ChatCompletionMessageToolCall {

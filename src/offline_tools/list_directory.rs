@@ -1,4 +1,5 @@
 use crate::Tool;
+use crate::types::NoContext;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -10,7 +11,8 @@ pub struct ListDirectory {
 }
 
 impl Tool for ListDirectory {
-    fn apply(&self) -> String {
+    type Context = NoContext;
+    fn apply(&self, _: Self::Context) -> String {
         let contents = std::fs::read_dir(&self.path);
         if contents.is_err() {
             return format!("could not list {}", self.path);

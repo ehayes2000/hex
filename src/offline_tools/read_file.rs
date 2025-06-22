@@ -1,4 +1,4 @@
-use crate::Tool;
+use crate::{Tool, types::NoContext};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::fs::read_to_string;
@@ -11,7 +11,8 @@ pub struct ReadFiles {
 }
 
 impl Tool for ReadFiles {
-    fn apply(&self) -> String {
+    type Context = NoContext;
+    fn apply(&self, _: Self::Context) -> String {
         self.paths
             .iter()
             .map(|path| match read_to_string(path) {

@@ -8,17 +8,20 @@ use serde_json::Error as JsonError;
 use serde_json::Value;
 use thiserror::Error;
 
-type Deserializer = Box<dyn Fn(&str) -> Result<Box<dyn Tool>, serde_json::Error>>;
-pub struct ToolObject {
+type Deserializer<T> = Box<dyn Fn(&str) -> Result<Box<dyn Tool<Context = T>>, serde_json::Error>>;
+pub struct ToolObject<T> {
     pub schema: RootSchema,
     pub json_schema: Value,
     pub description: String,
     pub name: String,
-    deserializer: Deserializer,
+    deserializer: Deserializer<T>,
 }
 
-impl ToolObject {
-    pub fn try_deserialize(&self, data: &str) -> Result<Box<dyn Tool>, serde_json::Error> {
+impl<T> ToolObject<T> {
+    pub fn try_deserialize(
+        &self,
+        data: &str,
+    ) -> Result<Box<dyn Tool<Context = T>>, serde_json::Error> {
         let deserializer = &self.deserializer;
         deserializer(data)
     }
@@ -32,8 +35,8 @@ pub enum ValidationError {
     JsonSerialization(JsonError),
 }
 
-impl From<&ToolObject> for ChatCompletionTool {
-    fn from(value: &ToolObject) -> Self {
+impl<T> From<&ToolObject<T>> for ChatCompletionTool {
+    fn from(value: &ToolObject<T>) -> Self {
         Self {
             r#type: ChatCompletionToolType::Function,
             function: FunctionObject {
@@ -46,10 +49,10 @@ impl From<&ToolObject> for ChatCompletionTool {
     }
 }
 
-impl ToolObject {
+impl<C> ToolObject<C> {
     pub fn try_from_tool<T>() -> Result<Self, ValidationError>
     where
-        T: JsonSchema + Tool + for<'de> Deserialize<'de> + 'static,
+        T: JsonSchema + Tool<Context = C> + for<'de> Deserialize<'de> + 'static,
     {
         let schema = schema_for!(&T);
 
@@ -59,7 +62,7 @@ impl ToolObject {
             serde_json::to_value(schema.clone()).map_err(ValidationError::JsonSerialization)?;
 
         let deserializer = Box::new(|data: &str| {
-            serde_json::from_str::<T>(data).map(|tool| Box::new(tool) as Box<dyn Tool>)
+            serde_json::from_str::<T>(data).map(|tool| Box::new(tool) as Box<dyn Tool<Context = C>>)
         });
 
         Ok(Self {
