@@ -4,7 +4,7 @@ mod types;
 
 use client::cli::CliClient;
 use offline_tools::offline_toolset;
-use types::{Tool, ToolSet};
+use types::Tool;
 
 use anyhow::Result;
 #[tokio::main]

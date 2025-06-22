@@ -1,7 +1,7 @@
 use super::io::{read_user_input, stdout_stream};
 
 use crate::types::NoContext;
-use crate::types::ToolSet;
+use crate::types::SyncToolSet;
 
 use anyhow::{Context, Result};
 use async_openai::Client;
@@ -20,7 +20,7 @@ use std::pin::Pin;
 
 pub struct CliClient {
     inner: Client<OpenAIConfig>,
-    toolset: ToolSet<NoContext>,
+    toolset: SyncToolSet<NoContext>,
     messages: Vec<ChatCompletionRequestMessage>,
 }
 
@@ -38,7 +38,7 @@ pub enum StreamItem {
 }
 
 impl CliClient {
-    pub fn new(toolset: ToolSet<NoContext>) -> CliClient {
+    pub fn new(toolset: SyncToolSet<NoContext>) -> CliClient {
         let client = Client::new();
         CliClient {
             inner: client,

@@ -1,4 +1,4 @@
-use crate::types::Tool;
+use crate::types::{AsyncTool, Tool};
 use async_openai::types::{ChatCompletionTool, ChatCompletionToolType, FunctionObject};
 use schemars::JsonSchema;
 use schemars::schema::{RootSchema, Schema, SchemaObject};
@@ -8,20 +8,35 @@ use serde_json::Error as JsonError;
 use serde_json::Value;
 use thiserror::Error;
 
-type Deserializer<T> = Box<dyn Fn(&str) -> Result<Box<dyn Tool<Context = T>>, serde_json::Error>>;
+type ToolTraitObject<T> = Box<dyn Tool<Context = T>>;
+type Deserializer<T> = Box<dyn Fn(&str) -> Result<ToolTraitObject<T>, serde_json::Error>>;
+
+type AsyncToolTraitObject<T> = Box<dyn AsyncTool<Context = T>>;
+type AsyncDeserializer<T> = Box<dyn Fn(&str) -> Result<AsyncToolTraitObject<T>, serde_json::Error>>;
+
+pub type SyncToolObject<Context> = ToolObject<Deserializer<Context>>;
+pub type AsyncToolObject<Context> = ToolObject<AsyncDeserializer<Context>>;
+
 pub struct ToolObject<T> {
     pub schema: RootSchema,
     pub json_schema: Value,
     pub description: String,
     pub name: String,
-    deserializer: Deserializer<T>,
+    deserializer: T,
 }
 
-impl<T> ToolObject<T> {
+impl<C> ToolObject<Deserializer<C>> {
+    pub fn try_deserialize(&self, data: &str) -> Result<ToolTraitObject<C>, serde_json::Error> {
+        let deserializer = &self.deserializer;
+        deserializer(data)
+    }
+}
+
+impl<C> ToolObject<AsyncDeserializer<C>> {
     pub fn try_deserialize(
         &self,
         data: &str,
-    ) -> Result<Box<dyn Tool<Context = T>>, serde_json::Error> {
+    ) -> Result<AsyncToolTraitObject<C>, serde_json::Error> {
         let deserializer = &self.deserializer;
         deserializer(data)
     }
@@ -49,7 +64,7 @@ impl<T> From<&ToolObject<T>> for ChatCompletionTool {
     }
 }
 
-impl<C> ToolObject<C> {
+impl<C> ToolObject<Deserializer<C>> {
     pub fn try_from_tool<T>() -> Result<Self, ValidationError>
     where
         T: JsonSchema + Tool<Context = C> + for<'de> Deserialize<'de> + 'static,
@@ -63,6 +78,33 @@ impl<C> ToolObject<C> {
 
         let deserializer = Box::new(|data: &str| {
             serde_json::from_str::<T>(data).map(|tool| Box::new(tool) as Box<dyn Tool<Context = C>>)
+        });
+
+        Ok(Self {
+            name,
+            json_schema,
+            schema,
+            description,
+            deserializer,
+        })
+    }
+}
+
+impl<C> ToolObject<AsyncDeserializer<C>> {
+    pub fn try_from_tool<T>() -> Result<Self, ValidationError>
+    where
+        T: JsonSchema + AsyncTool<Context = C> + for<'de> Deserialize<'de> + 'static,
+    {
+        let schema = schema_for!(&T);
+
+        let (name, description) = validate_tool_schema(&schema.schema)?;
+
+        let json_schema =
+            serde_json::to_value(schema.clone()).map_err(ValidationError::JsonSerialization)?;
+
+        let deserializer = Box::new(|data: &str| {
+            serde_json::from_str::<T>(data)
+                .map(|tool| Box::new(tool) as Box<dyn AsyncTool<Context = C>>)
         });
 
         Ok(Self {
