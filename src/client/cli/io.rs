@@ -1,4 +1,4 @@
-use super::client::StreamItem;
+use super::client::StreamPart;
 use anyhow::Result;
 use async_stream::stream;
 use futures::stream::{Stream, StreamExt};
@@ -21,14 +21,14 @@ pub async fn read_user_input() -> Result<String> {
 }
 
 pub async fn stdout_stream(
-    mut stream: Pin<Box<dyn Stream<Item = Result<StreamItem>>>>,
-) -> Result<Vec<StreamItem>> {
+    mut stream: Pin<Box<dyn Stream<Item = Result<StreamPart>>>>,
+) -> Result<Vec<StreamPart>> {
     let mut output = tokio::io::stdout();
     let mut parts = Vec::new();
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(response) => {
-                if let StreamItem::Content(ref text) = response {
+                if let StreamPart::Content(ref text) = response {
                     output.write_all(text.as_bytes()).await?
                 }
                 parts.push(response);

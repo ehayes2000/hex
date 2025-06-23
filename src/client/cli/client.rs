@@ -25,16 +25,16 @@ pub struct CliClient {
 }
 
 #[derive(Debug, Default)]
-pub struct PartialCall {
+pub struct ToolCal {
     pub id: String,
     pub name: String,
     pub json: String,
 }
 
 #[derive(Debug)]
-pub enum StreamItem {
+pub enum StreamPart {
     Content(String),
-    ToolCall(PartialCall),
+    ToolCall(ToolCal),
 }
 
 impl CliClient {
@@ -89,6 +89,7 @@ impl CliClient {
             Ok(())
         }
     }
+
     async fn send_chat_message(&mut self) -> Result<ChatCompletionResponseStream> {
         let request = CreateChatCompletionRequestArgs::default()
             .model("gpt-4.1")
@@ -106,9 +107,9 @@ impl CliClient {
 
     fn parse_stream(
         mut stream: ChatCompletionResponseStream,
-    ) -> Pin<Box<dyn Stream<Item = Result<StreamItem>>>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<StreamPart>>>> {
         Box::pin(stream! {
-        let mut tool_calls: HashMap<u32, PartialCall> = HashMap::new();
+        let mut tool_calls: HashMap<u32, ToolCal> = HashMap::new();
         while let Some(part) = stream.next().await {
           match part {
             Ok(part) => {
@@ -118,7 +119,7 @@ impl CliClient {
               }
               let first = first.unwrap();
               if let Some(content) = &first.delta.content {
-                yield Ok(StreamItem::Content(content.clone()));
+                yield Ok(StreamPart::Content(content.clone()));
               }
               if let Some(calls) = &first.delta.tool_calls {
                 for call in calls {
@@ -136,7 +137,7 @@ impl CliClient {
                         }
                       })
                       .or_insert_with(|| {
-                        let mut partial = PartialCall::default();
+                        let mut partial = ToolCal::default();
                         if let Some(n) = function.name.clone() {
                           partial.name = n;
                         }
@@ -148,14 +149,13 @@ impl CliClient {
                         }
                         // if let Some(id) = function.id
                         partial
-                      })
-                      ;
+                      });
                   }
                 }
               }
               if let Some(FinishReason::ToolCalls) = first.finish_reason {
                 for call in tool_calls.into_values() {
-                  yield Ok(StreamItem::ToolCall(call));
+                  yield Ok(StreamPart::ToolCall(call));
                 }
                 tool_calls = HashMap::new();
               }
@@ -166,13 +166,13 @@ impl CliClient {
         })
     }
 
-    fn process_stream(&self, items: Vec<StreamItem>) -> Vec<ChatCompletionRequestMessage> {
+    fn process_stream(&self, items: Vec<StreamPart>) -> Vec<ChatCompletionRequestMessage> {
         let mut tool_calls = vec![];
         let mut tool_responses = vec![];
         let mut response = String::new();
         for item in items {
             match item {
-                StreamItem::ToolCall(call) => {
+                StreamPart::ToolCall(call) => {
                     if let Ok(context) = self
                         .toolset
                         .try_tool_call(NoContext(), &call.name, &call.json)
@@ -194,7 +194,7 @@ impl CliClient {
                         ));
                     }
                 }
-                StreamItem::Content(text) => response.push_str(text.as_str()),
+                StreamPart::Content(text) => response.push_str(text.as_str()),
             };
         }
         let assistant_response =

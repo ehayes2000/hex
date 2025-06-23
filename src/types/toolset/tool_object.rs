@@ -1,14 +1,15 @@
-use crate::types::{AsyncTool, Tool};
+use crate::types::{AsyncTool, AsyncToolWrapper, Tool};
+
 use async_openai::types::{ChatCompletionTool, ChatCompletionToolType, FunctionObject};
 use schemars::JsonSchema;
-use schemars::schema::{RootSchema, Schema, SchemaObject};
+use schemars::schema::{Schema, SchemaObject};
 use schemars::schema_for;
 use serde::de::Deserialize;
 use serde_json::Error as JsonError;
 use serde_json::Value;
 use thiserror::Error;
 
-type ToolTraitObject<T> = Box<dyn Tool<Context = T>>;
+type ToolTraitObject<T> = Box<dyn Tool<Context = T> + Send + Sync>;
 type Deserializer<T> = Box<dyn Fn(&str) -> Result<ToolTraitObject<T>, serde_json::Error>>;
 
 type AsyncToolTraitObject<T> = Box<dyn AsyncTool<Context = T>>;
@@ -18,7 +19,6 @@ pub type SyncToolObject<Context> = ToolObject<Deserializer<Context>>;
 pub type AsyncToolObject<Context> = ToolObject<AsyncDeserializer<Context>>;
 
 pub struct ToolObject<T> {
-    pub schema: RootSchema,
     pub json_schema: Value,
     pub description: String,
     pub name: String,
@@ -67,7 +67,7 @@ impl<T> From<&ToolObject<T>> for ChatCompletionTool {
 impl<C> ToolObject<Deserializer<C>> {
     pub fn try_from_tool<T>() -> Result<Self, ValidationError>
     where
-        T: JsonSchema + Tool<Context = C> + for<'de> Deserialize<'de> + 'static,
+        T: JsonSchema + Tool<Context = C> + Send + Sync + for<'de> Deserialize<'de> + 'static,
     {
         let schema = schema_for!(&T);
 
@@ -77,13 +77,13 @@ impl<C> ToolObject<Deserializer<C>> {
             serde_json::to_value(schema.clone()).map_err(ValidationError::JsonSerialization)?;
 
         let deserializer = Box::new(|data: &str| {
-            serde_json::from_str::<T>(data).map(|tool| Box::new(tool) as Box<dyn Tool<Context = C>>)
+            serde_json::from_str::<T>(data)
+                .map(|tool| Box::new(tool) as Box<dyn Tool<Context = C> + Send + Sync>)
         });
 
         Ok(Self {
             name,
             json_schema,
-            schema,
             description,
             deserializer,
         })
@@ -110,10 +110,28 @@ impl<C> ToolObject<AsyncDeserializer<C>> {
         Ok(Self {
             name,
             json_schema,
-            schema,
             description,
             deserializer,
         })
+    }
+}
+
+impl<C> From<SyncToolObject<C>> for AsyncToolObject<C>
+where
+    C: Send + Sync + 'static,
+{
+    fn from(value: SyncToolObject<C>) -> Self {
+        let async_deserializer = Box::new(move |json: &str| {
+            (value.deserializer)(json).map(|trait_obj| {
+                Box::new(AsyncToolWrapper { tool: trait_obj }) as AsyncToolTraitObject<C>
+            })
+        });
+        Self {
+            description: value.description,
+            json_schema: value.json_schema,
+            name: value.name,
+            deserializer: async_deserializer,
+        }
     }
 }
 
