@@ -16,9 +16,8 @@ pub struct EditFile {
     pub contents: String,
 }
 
-impl Tool for EditFile {
-    type Context = NoContext;
-    fn apply(&self, _: Self::Context) -> String {
+impl Tool<NoContext> for EditFile {
+    fn apply(&self, _: NoContext) -> String {
         println!("[{}]", self.path);
         print!("Are you sure you want to overwrite this file? [y/N]: ");
         io::stdout().flush().unwrap();

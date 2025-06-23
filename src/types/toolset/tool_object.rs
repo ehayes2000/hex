@@ -9,10 +9,10 @@ use serde_json::Error as JsonError;
 use serde_json::Value;
 use thiserror::Error;
 
-type ToolTraitObject<T> = Box<dyn Tool<Context = T> + Send + Sync>;
+type ToolTraitObject<T> = Box<dyn Tool<T> + Send + Sync>;
 type Deserializer<T> = Box<dyn Fn(&str) -> Result<ToolTraitObject<T>, serde_json::Error>>;
 
-type AsyncToolTraitObject<T> = Box<dyn AsyncTool<Context = T>>;
+type AsyncToolTraitObject<T> = Box<dyn AsyncTool<T>>;
 type AsyncDeserializer<T> = Box<dyn Fn(&str) -> Result<AsyncToolTraitObject<T>, serde_json::Error>>;
 
 pub type SyncToolObject<Context> = ToolObject<Deserializer<Context>>;
@@ -67,7 +67,7 @@ impl<T> From<&ToolObject<T>> for ChatCompletionTool {
 impl<C> ToolObject<Deserializer<C>> {
     pub fn try_from_tool<T>() -> Result<Self, ValidationError>
     where
-        T: JsonSchema + Tool<Context = C> + Send + Sync + for<'de> Deserialize<'de> + 'static,
+        T: JsonSchema + Tool<C> + Send + Sync + for<'de> Deserialize<'de> + 'static,
     {
         let schema = schema_for!(&T);
 
@@ -78,7 +78,7 @@ impl<C> ToolObject<Deserializer<C>> {
 
         let deserializer = Box::new(|data: &str| {
             serde_json::from_str::<T>(data)
-                .map(|tool| Box::new(tool) as Box<dyn Tool<Context = C> + Send + Sync>)
+                .map(|tool| Box::new(tool) as Box<dyn Tool<C> + Send + Sync>)
         });
 
         Ok(Self {
@@ -93,7 +93,7 @@ impl<C> ToolObject<Deserializer<C>> {
 impl<C> ToolObject<AsyncDeserializer<C>> {
     pub fn try_from_tool<T>() -> Result<Self, ValidationError>
     where
-        T: JsonSchema + AsyncTool<Context = C> + for<'de> Deserialize<'de> + 'static,
+        T: JsonSchema + AsyncTool<C> + for<'de> Deserialize<'de> + 'static,
     {
         let schema = schema_for!(&T);
 
@@ -103,8 +103,7 @@ impl<C> ToolObject<AsyncDeserializer<C>> {
             serde_json::to_value(schema.clone()).map_err(ValidationError::JsonSerialization)?;
 
         let deserializer = Box::new(|data: &str| {
-            serde_json::from_str::<T>(data)
-                .map(|tool| Box::new(tool) as Box<dyn AsyncTool<Context = C>>)
+            serde_json::from_str::<T>(data).map(|tool| Box::new(tool) as Box<dyn AsyncTool<C>>)
         });
 
         Ok(Self {
@@ -122,10 +121,10 @@ where
 {
     fn from(value: SyncToolObject<C>) -> Self {
         let async_deserializer = Box::new(move |json: &str| {
-            (value.deserializer)(json).map(|trait_obj| {
-                Box::new(AsyncToolWrapper { tool: trait_obj }) as AsyncToolTraitObject<C>
-            })
+            (value.deserializer)(json)
+                .map(|trait_obj| Box::new(AsyncToolWrapper(trait_obj)) as Box<dyn AsyncTool<C>>)
         });
+
         Self {
             description: value.description,
             json_schema: value.json_schema,

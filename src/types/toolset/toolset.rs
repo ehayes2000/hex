@@ -28,7 +28,7 @@ impl<C> ToolSet<C> {
 impl<C> ToolSet<SyncToolObject<C>> {
     pub fn add_tool<T>(mut self) -> Result<Self, ToolSetCreationError>
     where
-        T: JsonSchema + Tool<Context = C> + for<'de> Deserialize<'de> + 'static + Send + Sync,
+        T: JsonSchema + Tool<C> + for<'de> Deserialize<'de> + 'static + Send + Sync,
     {
         let tool_object =
             SyncToolObject::try_from_tool::<T>().map_err(ToolSetCreationError::Validation)?;
@@ -79,7 +79,7 @@ where
 impl<C> ToolSet<AsyncToolObject<C>> {
     pub fn add_tool<T>(mut self) -> Result<Self, ToolSetCreationError>
     where
-        T: JsonSchema + AsyncTool<Context = C> + for<'de> Deserialize<'de> + 'static,
+        T: JsonSchema + AsyncTool<C> + for<'de> Deserialize<'de> + 'static,
     {
         let tool_object =
             AsyncToolObject::try_from_tool::<T>().map_err(ToolSetCreationError::Validation)?;

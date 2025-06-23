@@ -10,9 +10,8 @@ pub struct ReadFiles {
     pub paths: Vec<String>,
 }
 
-impl Tool for ReadFiles {
-    type Context = NoContext;
-    fn apply(&self, _: Self::Context) -> String {
+impl Tool<NoContext> for ReadFiles {
+    fn apply(&self, _: NoContext) -> String {
         self.paths
             .iter()
             .map(|path| match read_to_string(path) {
