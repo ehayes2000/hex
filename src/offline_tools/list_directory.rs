@@ -10,9 +10,8 @@ pub struct ListDirectory {
     pub path: String,
 }
 
-impl Tool for ListDirectory {
-    type Context = NoContext;
-    fn apply(&self, _: Self::Context) -> String {
+impl Tool<NoContext> for ListDirectory {
+    fn apply(&self, _: NoContext) -> String {
         let contents = std::fs::read_dir(&self.path);
         if contents.is_err() {
             return format!("could not list {}", self.path);

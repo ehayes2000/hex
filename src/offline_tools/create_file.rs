@@ -19,10 +19,8 @@ pub struct CreateFile {
     pub contents: String,
 }
 
-impl Tool for CreateFile {
-    type Context = NoContext;
-
-    fn apply(&self, _: Self::Context) -> String {
+impl Tool<NoContext> for CreateFile {
+    fn apply(&self, _: NoContext) -> String {
         let path = Path::new(&self.path);
         if path.exists() {
             return format!(
