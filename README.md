@@ -1,6 +1,6 @@
 # hex
 
-hex enables LLM-driven workflows with recursive tool usage. The AI can call specified functions ("tools") as directed in a conversation, chaining calls as needed (e.g., reading, writing, editing files, listing directories).
+Hex is a small CLI AI assistant with support for tool calling. 
 
 ## Structure
 - **types/**: Tool trait, async variant, toolsets.
