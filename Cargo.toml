@@ -1,18 +1,11 @@
-[package]
-name = "hex"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = ["hex", "tools", "examples"]
+resolver = "3"
 
-[dependencies]
-anyhow = "1.0.98"
-async-openai = "0.28.3"
-async-stream = "0.3.6"
-async-trait = "0.1.88"
-futures = "0.3.31"
-rand = "0.9.1"
-schemars = "0.8.22"
+[workspace.dependencies]
 serde = "1.0.219"
 serde_json = "1.0.140"
-thiserror = "2.0.12"
-tokio = {version = "1.45.1", features=["full"]}
-
+tokio = { version = "1.45.1", features = ["full"] }
+schemars = "0.8.22"
+async-trait = "0.1.88"
+anyhow = "1.0.98"

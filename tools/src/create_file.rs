@@ -1,5 +1,5 @@
-use crate::Tool;
-use crate::types::NoContext;
+use hex::Tool;
+use hex::types::NoContext;
 
 use schemars::JsonSchema;
 use serde::Deserialize;

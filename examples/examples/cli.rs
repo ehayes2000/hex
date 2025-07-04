@@ -1,10 +1,5 @@
-mod client;
-mod offline_tools;
-mod types;
-
-use client::cli::CliClient;
-use offline_tools::offline_toolset;
-use types::Tool;
+use hex::client::cli::CliClient;
+use tools::offline_toolset;
 
 use anyhow::Result;
 #[tokio::main]

@@ -3,8 +3,8 @@ mod edit_file;
 mod list_directory;
 mod read_file;
 
-use crate::types::NoContext;
-use crate::types::SyncToolSet;
+use hex::types::NoContext;
+use hex::types::SyncToolSet;
 
 use create_file::CreateFile;
 use edit_file::EditFile;
