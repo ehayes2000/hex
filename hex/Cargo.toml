@@ -3,6 +3,9 @@ name = "hex"
 version = "0.1.0"
 edition = "2024"
 
+[dev-dependencies]
+ringbuf = "0.4.8"
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -16,3 +19,8 @@ cpal = "0.16.0"
 futures = "0.3.31"
 rand = "0.9.1"
 thiserror = "2.0.12"
+futures-channel = "0.3.31"
+tokio-tungstenite = { version = "0.26.1", features = ["connect", "native-tls"] }
+futures-util = "0.3.31"
+secrecy = "0.10.3"
+url = "2.5.4"
