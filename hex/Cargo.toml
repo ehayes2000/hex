@@ -15,6 +15,7 @@ async-trait = { workspace = true }
 anyhow = { workspace = true }
 async-openai = { version = "0.28.3", features = ["realtime"] }
 async-stream = "0.3.6"
+base64 = "0.22.1"
 cpal = "0.16.0"
 futures = "0.3.31"
 rand = "0.9.1"

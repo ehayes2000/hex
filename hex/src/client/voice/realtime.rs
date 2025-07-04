@@ -5,11 +5,17 @@ use async_openai::types::realtime::{
 use futures_util::{StreamExt, future, pin_mut};
 use secrecy::ExposeSecret;
 use tokio::io::AsyncReadExt;
+use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
 
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, http::Request, protocol::Message},
 };
+
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::{Stream, StreamConfig};
+use base64::{Engine as _, engine::general_purpose};
 
 const ENDPOINT: &str = "realtime";
 const DEFAULT_MODEL: &str = "gpt-4o-realtime-preview-2024-12-17";
@@ -17,14 +23,47 @@ const DEFAULT_MODEL: &str = "gpt-4o-realtime-preview-2024-12-17";
 pub struct Realtime<C: Config> {
     config: C,
     model: &'static str,
+    audio_buffer: Arc<Mutex<VecDeque<i16>>>,
+    _audio_stream: Option<Stream>,
 }
 
 impl<C: Config> Realtime<C> {
-    pub fn new(mut config: C) -> Self {
+    pub fn new(config: C) -> Self {
+        let audio_buffer = Arc::new(Mutex::new(VecDeque::new()));
+        let audio_stream = Self::setup_audio_stream(audio_buffer.clone()).ok();
+        
         Self {
             config,
             model: DEFAULT_MODEL,
+            audio_buffer,
+            _audio_stream: audio_stream,
         }
+    }
+    
+    fn setup_audio_stream(audio_buffer: Arc<Mutex<VecDeque<i16>>>) -> Result<Stream, Box<dyn std::error::Error>> {
+        let host = cpal::default_host();
+        let device = host.default_output_device().ok_or("No output device available")?;
+        
+        let config = StreamConfig {
+            channels: 1,
+            sample_rate: cpal::SampleRate(24000),
+            buffer_size: cpal::BufferSize::Default,
+        };
+        
+        let stream = device.build_output_stream(
+            &config,
+            move |data: &mut [i16], _: &cpal::OutputCallbackInfo| {
+                let mut buffer = audio_buffer.lock().unwrap();
+                for sample in data.iter_mut() {
+                    *sample = buffer.pop_front().unwrap_or(0);
+                }
+            },
+            |err| eprintln!("Audio stream error: {}", err),
+            None,
+        )?;
+        
+        stream.play()?;
+        Ok(stream)
     }
 
     pub async fn message(&self) {
@@ -41,8 +80,11 @@ impl<C: Config> Realtime<C> {
 
         let stdin_to_ws = rx.map(Ok).forward(write);
 
+        let audio_buffer = self.audio_buffer.clone();
         let ws_to_stdout = {
-            read.for_each(|message| async {
+            read.for_each(move |message| {
+                let audio_buffer = audio_buffer.clone();
+                async move {
                 let message = message.unwrap();
 
                 match message {
@@ -74,6 +116,16 @@ impl<C: Config> Realtime<C> {
                                     ServerEvent::ResponseAudioTranscriptDelta(event) => {
                                         eprint!("{}", event.delta.trim());
                                     }
+                                    ServerEvent::ResponseAudioDelta(event) => {
+                                        if let Ok(audio_data) = general_purpose::STANDARD.decode(&event.delta) {
+                                            let mut buffer = audio_buffer.lock().unwrap();
+                                            // Convert bytes to i16 samples (PCM16 format)
+                                            for chunk in audio_data.chunks_exact(2) {
+                                                let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
+                                                buffer.push_back(sample);
+                                            }
+                                        }
+                                    }
                                     ServerEvent::Error(e) => {
                                         eprint!("{e:?}");
                                     }
@@ -98,6 +150,7 @@ impl<C: Config> Realtime<C> {
 
                 // after every message add newline
                 eprint!("\n");
+                }
             })
         };
         pin_mut!(stdin_to_ws, ws_to_stdout);
@@ -106,7 +159,7 @@ impl<C: Config> Realtime<C> {
 
     fn request(&self) -> Request<()> {
         let mut base_url = url::Url::parse(self.config.api_base()).expect("valid url");
-        base_url.set_scheme("wss");
+        let _ = base_url.set_scheme("wss");
 
         let mut request = format!("{}/{}?model={}", base_url, ENDPOINT, self.model)
             .into_client_request()

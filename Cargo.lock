@@ -658,6 +658,7 @@ dependencies = [
  "async-openai",
  "async-stream",
  "async-trait",
+ "base64",
  "cpal",
  "futures",
  "futures-channel",
