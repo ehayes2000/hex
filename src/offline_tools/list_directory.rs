@@ -1,4 +1,4 @@
-use crate::Tool;
+use crate::types::Tool;
 use crate::types::NoContext;
 use schemars::JsonSchema;
 use serde::Deserialize;

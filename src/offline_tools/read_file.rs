@@ -1,4 +1,4 @@
-use crate::{Tool, types::NoContext};
+use crate::types::{Tool, NoContext};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::fs::read_to_string;

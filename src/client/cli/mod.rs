@@ -1,4 +1,4 @@
 mod client;
-mod io;
+pub mod io;
 
 pub use client::*;
